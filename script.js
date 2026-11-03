@@ -759,7 +759,7 @@ const restoreIds = ['completion-bar','search-wrap','sidebar-tabs','inv-list','in
 // ============================================================
 window.onload = function() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/mcc/arcane_vault/sw.js')
+    navigator.serviceWorker.register('/coffre_des_arcanes/sw.js')
       .then(reg => {
         console.log('SW enregistré', reg);
         // Vérification automatique des mises à jour du Service Worker
