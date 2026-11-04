@@ -9,5 +9,6 @@ Projet Coffre des Arcanes
   - Harmonisation du gestionnaire `onAuthStateChanged` et des fonctions Cloud (`saveGameDataToCloud`, `loadGameDataFromCloud`) pour synchroniser directement l'objet `state` global avec Firestore.
 - Étapes de migration et d'authentification Google réalisées :
   - Étape 1 : Refonte du bouton Google (Glassmorphism Bento Grid, logo SVG officiel en arrière-plan vectoriel, affichage du compte connecté et lien de déconnexion).
-  - Étape 2 : Automatisation du pseudo (suppression de l'input texte manuel, récupération automatique du `displayName` du compte Google et validation du bouton d'entrée).
-  - Étape 3 : Intégration de la fenêtre de synchronisation & fusion (modal de fusion localStorage/Cloud, import d'anciens codes AV1-…, et optimisation/nettoyage).
+  - Étape 2 : Dissociation et sécurisation du pseudo public et de l'authentification Google (RGPD / vie privée) : vérification de la présence du champ `pseudo` dans Firestore (`players/{uid}`). Modale bloquante "Nommez votre Mage de l'Académie" si absent, persistance permanente et inchangeable par la suite pour l'UID.
+  - Étape 3 : Intégration du tableau de classement (Leaderboard) des joueurs trié par nombre d'objets uniques possédés (bouton trophée 🏆 avec pulsation au premier clic, modale Glassmorphism et podium).
+  - Étape 4 : Intégration de la fenêtre de synchronisation & fusion (modal de fusion localStorage/Cloud avec avertissement clair sur les doublons non recyclés, anti-duplication d'objets, import d'anciens codes AV1-…, et optimisation/nettoyage).

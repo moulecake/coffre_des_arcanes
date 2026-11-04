@@ -1,7 +1,7 @@
 {
-  "name": "Arcane Vault",
-  "short_name": "Arcane Vault",
-  "description": "Application de Loot Box pour jeux de rôle sur table - Simulation de tirages d'objets magiques",
+  "name": "Coffre des Arcanes",
+  "short_name": "Coffre des Arcanes",
+  "description": "Application d'opening basé sur les jeux de rôle sur table - Simulation de tirages d'objets magiques",
   "start_url": "/coffre_des_arcanes/index.html",
   "scope": "/coffre_des_arcanes/",
   "display": "standalone",
