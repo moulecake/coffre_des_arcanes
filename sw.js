@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arcane-vault-cache-v2.0.1'; // Passage en v2
+const CACHE_NAME = 'arcane-vault-cache-v2.0.1';
 const BASE = '/coffre_des_arcanes/';
 const FILES_TO_CACHE = [
   BASE + 'index.html',
@@ -12,7 +12,16 @@ const FILES_TO_CACHE = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(FILES_TO_CACHE))
+      .then(cache => {
+        // On sécurise chaque ajout un par un pour éviter le crash global
+        return Promise.all(
+          FILES_TO_CACHE.map(url => {
+            return cache.add(url).catch(err => {
+              console.warn(`[Service Worker] Fichier introuvable ignoré du cache : ${url}`, err);
+            });
+          })
+        );
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -29,8 +38,6 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
     caches.match(event.request).then(cached => {
-      // Stratégie Stale-While-Revalidate ou Network First pour le HTML/JS
-      // Ici, on privilégie le cache mais on fetch en arrière-plan ou on s'assure du update
       return cached || fetch(event.request).catch(() => {
         if (event.request.mode === 'navigate') return caches.match(BASE + 'index.html');
       });
