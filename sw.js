@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arcane-vault-cache-v2.0.1';
+const CACHE_NAME = 'arcane-vault-cache-v2.0.2';
 const BASE = '/coffre_des_arcanes/';
 const FILES_TO_CACHE = [
   BASE + 'index.html',
