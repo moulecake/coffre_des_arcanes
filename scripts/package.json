@@ -1,0 +1,8 @@
+{
+  "name": "arcanes-push",
+  "private": true,
+  "description": "Envoi des notifications push du Coffre des Arcanes (GitHub Actions)",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
