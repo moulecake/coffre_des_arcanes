@@ -1,0 +1,37 @@
+name: Envoi des notifications push
+
+# Toutes les 10 minutes (GitHub peut retarder un peu les exécutions programmées : ce n'est pas à la minute près).
+# Les exécutions PROGRAMMÉES ne tournent que sur le dépôt officiel (le dépôt de test partage le même Firebase).
+# Test manuel : onglet Actions → « Envoi des notifications push » → Run workflow (simulation cochée par défaut).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Simulation (aucun envoi, aucune écriture)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: send-push
+  cancel-in-progress: false
+
+jobs:
+  send:
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'moulecake/coffre_des_arcanes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installer firebase-admin
+        run: npm install --no-audit --no-fund
+        working-directory: scripts
+      - name: Envoyer les notifications dues
+        run: node scripts/send-push.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
