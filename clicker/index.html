@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Voile & le Grimoire — Coffre des arcanes</title>
+<meta name="theme-color" content="#0b0f19">
+<link rel="icon" href="../favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- Firebase (même projet que le Coffre : la session Google est partagée) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+  const app = initializeApp({ apiKey: "AIzaSyBkwZIkmAAuYtZpoVokvhZd5MYlTfkLyww", authDomain: "coffre-des-arcanes.firebaseapp.com", projectId: "coffre-des-arcanes",
+    storageBucket: "coffre-des-arcanes.firebasestorage.app", messagingSenderId: "905578088250", appId: "1:905578088250:web:38f331566593c3b485f203" });
+  window.auth = getAuth(app); window.db = getFirestore(app);
+  window.onAuthStateChanged = onAuthStateChanged; window.doc = doc; window.setDoc = setDoc; window.getDoc = getDoc; window.runTransaction = runTransaction;
+</script>
+<!-- Ordre : spells (hooks) > passives (bâtiments) > core (state, boucle) -->
+<script src="spells.js" defer></script>
+<script src="passives.js" defer></script>
+<script src="core.js" defer></script>
+</head>
+<body>
+<div class="stars" id="stars" aria-hidden="true"></div>
+<header class="top">
+  <div class="topl">
+  <a class="back" href="../" aria-label="Retour au Coffre" title="Retour au Coffre des Arcanes">
+    <svg class="cb-ar" viewBox="0 0 12 20" aria-hidden="true"><path d="M9.5 2L2.5 10l7 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg class="cb-chest" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Coffre EXACTEMENT identique à #chest-svg de index.html (mêmes formes, mêmes couleurs) ; seuls les groupes base/couvercle ont été ajoutés pour l'animation au survol -->
+      <defs>
+        <linearGradient id="cg1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1e1b4b"/><stop offset="1" stop-color="#0f0c24"/></linearGradient>
+        <linearGradient id="cg2" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#312e81"/><stop offset="1" stop-color="#1e1b4b"/></linearGradient>
+        <linearGradient id="cg3" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#a855f7"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+        <radialGradient id="cbx" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e0f7ff"/><stop offset=".4" stop-color="#67e8f9" stop-opacity=".85"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+      </defs>
+      <ellipse class="cb-glow" cx="70" cy="74" rx="52" ry="14" fill="url(#cbx)"/>
+      <g class="cb-base">
+        <rect x="20" y="72" width="100" height="50" rx="8" fill="url(#cg1)" stroke="rgba(168,85,247,0.4)" stroke-width="1.5"/>
+        <circle cx="34" cy="96" r="4" fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.5)" stroke-width="1"/>
+        <circle cx="106" cy="96" r="4" fill="rgba(168,85,247,0.3)" stroke="rgba(168,85,247,0.5)" stroke-width="1"/>
+        <text x="70" y="110" text-anchor="middle" fill="rgba(168,85,247,0.4)" font-size="12" font-family="serif">ᚱᚢᚾ</text>
+      </g>
+      <g class="cb-lid">
+        <rect x="20" y="32" width="100" height="44" rx="8" fill="url(#cg2)" stroke="rgba(168,85,247,0.4)" stroke-width="1.5"/>
+        <path d="M20 60 Q70 20 120 60" fill="rgba(168,85,247,0.08)" stroke="rgba(168,85,247,0.3)" stroke-width="1"/>
+        <rect x="20" y="68" width="100" height="8" fill="rgba(168,85,247,0.15)" stroke="rgba(168,85,247,0.3)" stroke-width="1"/>
+        <rect x="58" y="60" width="24" height="18" rx="4" fill="rgba(168,85,247,0.2)" stroke="rgba(168,85,247,0.6)" stroke-width="1.5"/>
+        <circle cx="70" cy="67" r="5" fill="none" stroke="url(#cg3)" stroke-width="2"/>
+        <rect x="68" y="69" width="4" height="5" rx="1" fill="url(#cg3)"/>
+        <circle cx="34" cy="46" r="3" fill="rgba(34,211,238,0.3)" stroke="rgba(34,211,238,0.5)" stroke-width="1"/>
+        <circle cx="106" cy="46" r="3" fill="rgba(34,211,238,0.3)" stroke="rgba(34,211,238,0.5)" stroke-width="1"/>
+        <text x="70" y="52" text-anchor="middle" fill="rgba(34,211,238,0.35)" font-size="10" font-family="serif">✦ ᚹ ✦</text>
+      </g>
+      <path class="cb-sp cb-s1" d="M44 40l2.4 5.6 5.6 2.4-5.6 2.4-2.4 5.6-2.4-5.6-5.6-2.4 5.6-2.4z" fill="#fff1b0"/>
+      <path class="cb-sp cb-s2" d="M100 34l1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8z" fill="#a5f3fc"/>
+    </svg>
+    <!-- COFFRE ALTERNATIF « dorée » (v2.a2.7, très beau — à ressortir si besoin : le remettre à la place du <svg class="cb-chest"> ci-dessus ; ses ids cbb/cbl/cbg/cbr/cbx sont libres)
+    <svg class="cb-chest" viewBox="8 14 124 114" aria-hidden="true">
+      <defs>
+        <linearGradient id="cbb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3796"/><stop offset="1" stop-color="#15123a"/></linearGradient>
+        <linearGradient id="cbl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a52d8"/><stop offset="1" stop-color="#2a2570"/></linearGradient>
+        <linearGradient id="cbg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a6a1d"/><stop offset=".35" stop-color="#fff1b0"/><stop offset=".7" stop-color="#d4af37"/><stop offset="1" stop-color="#7a5a14"/></linearGradient>
+        <linearGradient id="cbr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+        <radialGradient id="cbx" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e0f7ff"/><stop offset=".4" stop-color="#67e8f9" stop-opacity=".85"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+      </defs>
+      <ellipse class="cb-glow" cx="70" cy="74" rx="52" ry="14" fill="url(#cbx)"/>
+      <g class="cb-base">
+        <rect x="20" y="72" width="100" height="52" rx="8" fill="url(#cbb)" stroke="rgba(245,217,138,.5)" stroke-width="2"/>
+        <rect x="32" y="72" width="9" height="52" fill="url(#cbg)" opacity=".9"/><rect x="99" y="72" width="9" height="52" fill="url(#cbg)" opacity=".9"/>
+        <circle cx="36.5" cy="86" r="2.6" fill="#fff1b0"/><circle cx="36.5" cy="110" r="2.6" fill="#fff1b0"/><circle cx="103.5" cy="86" r="2.6" fill="#fff1b0"/><circle cx="103.5" cy="110" r="2.6" fill="#fff1b0"/>
+        <text x="70" y="108" text-anchor="middle" fill="rgba(168,85,247,.6)" font-size="15" font-family="serif">ᚱᚢᚾ</text>
+        <path d="M24 78Q70 86 116 78" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+      </g>
+      <g class="cb-lid">
+        <path d="M20 78V60Q20 26 70 26Q120 26 120 60V78Z" fill="url(#cbl)" stroke="rgba(245,217,138,.55)" stroke-width="2"/>
+        <path d="M20 66Q70 14 120 66" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="32" y="40" width="9" height="38" fill="url(#cbg)" opacity=".9" transform="rotate(8 36 60)"/><rect x="99" y="40" width="9" height="38" fill="url(#cbg)" opacity=".9" transform="rotate(-8 104 60)"/>
+        <rect x="20" y="70" width="100" height="8" fill="url(#cbg)" opacity=".85"/>
+        <rect x="56" y="58" width="28" height="24" rx="6" fill="url(#cbg)" stroke="#5b3f0c" stroke-width="1.4"/>
+        <circle cx="70" cy="67.5" r="4.6" fill="#1a1230"/><path d="M68 70h4l1.6 7h-7.2z" fill="#1a1230"/><circle class="cb-kh" cx="70" cy="67.5" r="2.2" fill="url(#cbr)"/>
+        <ellipse cx="62" cy="62" rx="3" ry="1.4" fill="rgba(255,255,255,.7)" transform="rotate(-30 62 62)"/>
+      </g>
+      <path class="cb-sp cb-s1" d="M44 40l2.4 5.6 5.6 2.4-5.6 2.4-2.4 5.6-2.4-5.6-5.6-2.4 5.6-2.4z" fill="#fff1b0"/>
+      <path class="cb-sp cb-s2" d="M100 34l1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8z" fill="#a5f3fc"/>
+    </svg>
+    -->
+    <span class="cb-t"><small>Retour au</small><b>Coffre</b></span>
+  </a>
+  <button class="tool" id="snd" aria-label="Couper ou activer le son" title="Sons : activés">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="sdg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset=".55" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6a1d"/></linearGradient></defs>
+      <path d="M5 12.5h5.2L17 7v18l-6.8-5.5H5z" fill="url(#sdg)" stroke="#5b3f0c" stroke-width=".9" stroke-linejoin="round"/>
+      <g class="snd-w" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"><path d="M21 12.2a5.2 5.2 0 0 1 0 7.6"/><path d="M24.2 9a9.6 9.6 0 0 1 0 14"/></g>
+      <path class="snd-x" d="M20.5 11l8 10M28.5 11l-8 10" fill="none" stroke="#fb7185" stroke-width="2.2" stroke-linecap="round"/></svg>
+  </button>
+  <button class="tool" id="help" aria-label="Revoir le message d'accueil" title="Revoir le message d'accueil">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="hpg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#6d5bd0"/></linearGradient></defs>
+      <circle cx="16" cy="16" r="11.5" fill="rgba(109,91,208,.18)" stroke="url(#hpg)" stroke-width="1.6"/><circle cx="16" cy="16" r="8.4" fill="none" stroke="rgba(196,181,253,.35)" stroke-width=".8" stroke-dasharray="1.6 2.2"/>
+      <path d="M12.6 12.6a3.5 3.5 0 1 1 5.2 3c-1 .7-1.8 1.2-1.8 2.5" fill="none" stroke="#f5d98a" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="22" r="1.3" fill="#f5d98a"/></svg>
+  </button>
+  </div>
+  <div class="res">
+    <div class="chip ether"><span>Éther Pur</span><b id="eth">0 nL</b><small id="ethps"></small></div>
+    <div class="chip frag" title="5 fragments = 1 clé du Coffre. 5 min d'effort actif = 1 fragment. Le flux passif d'Éther distille des micro-fragments (100 = 1 fragment)."><span>Fragments de clé</span>
+      <div class="fv">
+        <svg id="fkey" class="fkey" viewBox="0 0 40 112" aria-hidden="true"></svg>
+        <svg id="fvial" class="fvial" viewBox="0 0 28 46" aria-hidden="true">
+          <defs>
+            <clipPath id="fvc"><path d="M11 6V18A13.34 13.34 0 1 0 17 18V6Z"/></clipPath>
+            <linearGradient id="fvg" gradientUnits="userSpaceOnUse" x1="0" y1="-2" x2="0" y2="30"><stop offset="0" stop-color="#7dd3fc"/><stop offset=".35" stop-color="#8b5cf6"/><stop offset="1" stop-color="#3b1a8a"/></linearGradient>
+            <linearGradient id="fvs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9d5ff"/><stop offset="1" stop-color="#7c6bd6"/></linearGradient>
+          </defs>
+          <g clip-path="url(#fvc)">
+            <rect width="28" height="46" fill="rgba(139,92,246,.07)"/>
+            <g id="fvL" style="transform:translateY(47px)">
+              <path class="fvw fvw2" d="M-28 .6q7 -1.8 14 0t14 0t14 0t14 0t14 0t14 0V50H-28z"/>
+              <path class="fvw fvw1" d="M-28 0q7 -1.6 14 0t14 0t14 0t14 0t14 0t14 0V50H-28z"/>
+              <circle class="fvb" cx="11" cy="14" r="1"/><circle class="fvb b2" cx="16" cy="12" r=".8"/><circle class="fvb b3" cx="13.5" cy="16" r=".6"/>
+            </g>
+          </g>
+          <path class="fvo" d="M11 6V18A13.34 13.34 0 1 0 17 18V6Z"/>
+          <path class="fvh" d="M6.4 27a8.6 8.6 0 0 1 3.2-6.6"/><path class="fvh h2" d="M8 36.5a8.6 8.6 0 0 0 2.4 2.4"/>
+          <rect x="9.4" y="4.6" width="9.2" height="1.8" rx=".9" fill="#c4b5fd"/>
+          <rect x="10.4" y="0.6" width="7.2" height="4.4" rx="1.2" fill="#a07a1e" stroke="#f5d98a" stroke-width=".5"/>
+        </svg>
+        <div class="ft"><b id="fr">0 / 9</b><small id="frs"></small><small id="frm"></small></div>
+      </div>
+    </div>
+    <div class="chip sage"><span>Sagesse</span><b id="sg">0</b><small id="sgps"></small></div>
+  </div>
+</header>
+
+<main class="duo">
+  <section class="pane voile">
+    <h2>Le Voile d'Éther</h2>
+    <button id="orb" class="veil" aria-label="Frapper le Voile d'Éther">
+      <svg id="veilSvg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="vg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="320" y2="0"><stop offset="0" style="stop-color:var(--v1)"/><stop offset="1" style="stop-color:var(--v2)"/></linearGradient>
+          <radialGradient id="va"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#c4b5fd"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></radialGradient>
+          <filter id="vglow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g id="vStars"></g>
+        <path d="M8 22H312" stroke="#6d5bd0" stroke-width="2.5" stroke-linecap="round"/>
+        <g id="vNet" filter="url(#vglow)" fill="none" stroke="url(#vg)" stroke-width="1.1"></g>
+        <g id="vKnots" fill="#e0e7ff"></g>
+        <circle cx="14" cy="22" r="9" fill="url(#va)"/><circle cx="306" cy="22" r="9" fill="url(#va)"/>
+      </svg>
+    </button>
+    <div class="buff" id="heatTxt">Canalisation stable</div>
+    <div class="heat" id="heatBox"><i id="heat"></i></div>
+    <div class="hint" id="heatLim"></div>
+    <div class="hint" aria-hidden="true">&nbsp;</div>
+    <div class="bar"><div class="slots" id="barV"></div><button class="gear" data-p="V" aria-label="Équiper des sorts">⚙</button></div>
+    <div class="blds" id="bV"></div>
+  </section>
+
+  <section class="pane grimoire">
+    <h2>Le Grimoire aux Pages Infinies</h2>
+    <button id="tome" class="book" aria-label="Lire une page du Grimoire">
+      <span class="bk-cover"></span>
+      <span class="pg pl"><svg id="gL" viewBox="0 0 100 150"></svg></span>
+      <span class="pg pr"><svg id="gR" viewBox="0 0 100 150"></svg></span>
+      <span class="bk-spine"></span>
+      <span class="leaf" id="leaf"><span class="lf"></span><span class="lf lback"></span></span>
+      <span class="ink" id="ink"></span>
+      <svg id="tent" class="tent" viewBox="0 0 400 300" aria-hidden="true"><defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0b4d"/><stop offset=".5" stop-color="#12041f"/><stop offset="1" stop-color="#050209"/></linearGradient><filter id="tglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g id="tentG" filter="url(#tglow)"></g></svg>
+    </button>
+    <div class="buff" id="buff">Page 1</div>
+    <div class="pgbar" id="pgbar"><i id="pgFill"></i></div>
+    <div class="hint" id="pgTxt"></div>
+    <div class="hint" id="hintG"></div>
+    <div class="bar"><div class="slots" id="barG"></div><button class="gear" data-p="G" aria-label="Équiper des sorts">⚙</button></div>
+    <div class="blds" id="bG"></div>
+  </section>
+</main>
+<section class="pane amphi">
+  <div class="amh">
+    <h2>L'Amphithéâtre</h2>
+    <button class="dkbtn" id="dkopen" title="Créer et gérer vos decks de sorts" aria-label="Decks de sorts">
+      <svg class="dk-ic" viewBox="0 0 56 44" aria-hidden="true">
+        <defs>
+          <linearGradient id="dkc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2756"/><stop offset="1" stop-color="#120f2c"/></linearGradient>
+          <linearGradient id="dkg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset=".5" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6a1d"/></linearGradient>
+        </defs>
+        <g class="dk-c dk-l"><rect x="14" y="6" width="22" height="30" rx="4" fill="url(#dkc)" stroke="url(#dkg)" stroke-width="1.4"/><path d="M26 11l-5 9h4l-2 8 7-10h-4z" fill="#a78bfa"/></g>
+        <g class="dk-c dk-r"><rect x="14" y="6" width="22" height="30" rx="4" fill="url(#dkc)" stroke="url(#dkg)" stroke-width="1.4"/><circle cx="25" cy="21" r="6" fill="none" stroke="#38bdf8" stroke-width="1.6"/><circle cx="25" cy="21" r="2.2" fill="#38bdf8"/></g>
+        <g class="dk-c dk-m"><rect x="14" y="6" width="22" height="30" rx="4" fill="url(#dkc)" stroke="url(#dkg)" stroke-width="1.6"/><rect x="17" y="9" width="16" height="24" rx="2.5" fill="none" stroke="rgba(245,217,138,.35)" stroke-width=".8"/><path d="M25 12l2.6 6.2 6.4.6-4.9 4.2 1.6 6.4-5.7-3.5-5.7 3.5 1.6-6.4-4.9-4.2 6.4-.6z" fill="url(#dkg)"/></g>
+        <g class="dk-plus"><circle cx="43" cy="33" r="8" fill="#1a1230" stroke="url(#dkg)" stroke-width="1.5"/><path d="M43 28.5v9M38.5 33h9" stroke="#fff1b0" stroke-width="2" stroke-linecap="round"/></g>
+      </svg>
+      <span class="dk-t"><small>Forger</small><b>Mes Decks</b></span>
+    </button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="hint" id="course"></div>
+  <div class="blds" id="lessons"></div>
+</section>
+<div id="intro" hidden><div class="pbox intro" role="dialog" aria-modal="true" aria-labelledby="introT">
+  <svg class="intro-emb" viewBox="0 0 120 56" aria-hidden="true"><defs><linearGradient id="ieg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#38bdf8"/></linearGradient><linearGradient id="ieb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset="1" stop-color="#b8892a"/></linearGradient></defs>
+    <path d="M6 10C20 4 34 4 48 10M6 18C20 12 34 12 48 18M6 26C20 20 34 20 48 26M14 6v26M26 6v26M38 6v26" fill="none" stroke="url(#ieg)" stroke-width="1.4" stroke-linecap="round"/><circle cx="14" cy="10" r="2" fill="#e0e7ff"/><circle cx="38" cy="14" r="2" fill="#e0e7ff"/>
+    <path d="M62 14c8-5 14-5 20 0v26c-6-5-12-5-20 0z" fill="url(#ieb)" stroke="#6b4a10" stroke-width="1"/><path d="M82 14c8-5 14-5 20 0v26c-6-5-12-5-20 0z" fill="#ecd9a8" stroke="#6b4a10" stroke-width="1"/><path d="M82 14v26" stroke="#6b4a10" stroke-width="1.2"/>
+    <path d="M68 22h8M68 27h8M68 32h6M88 22h8M88 27h8M88 32h6" stroke="#8a5a14" stroke-width="1.2" stroke-linecap="round"/><path d="M52 24l4-4 4 4-4 4z" fill="#f5d98a"/></svg>
+  <h3 id="introT">Bienvenue, apprenti mage</h3>
+  <p class="intro-sub">Quelques repères pour commencer. Le reste, c'est à toi de le découvrir.</p>
+  <div class="intro-list">
+    <div class="ir"><svg viewBox="0 0 32 32"><path d="M3 8c8-4 18-4 26 0M3 15c8-4 18-4 26 0M3 22c8-4 18-4 26 0M9 5v20M16 4v21M23 5v20" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-linecap="round"/><circle cx="16" cy="15" r="2.4" fill="#38bdf8"/></svg><div><b>Le Voile d'Éther</b><small>Frappe-le pour en tirer de l'Éther. Ne le brusque pas trop : il n'aime pas qu'on s'emballe.</small></div></div>
+    <div class="ir"><svg viewBox="0 0 32 32"><path d="M3 9c5-3 9-3 13 0v17c-4-3-8-3-13 0z" fill="#f5d98a" stroke="#8a6a1d" stroke-width="1.2"/><path d="M16 9c4-3 8-3 13 0v17c-5-3-9-3-13 0z" fill="#ecd9a8" stroke="#8a6a1d" stroke-width="1.2"/></svg><div><b>Le Grimoire</b><small>Lis ses pages pour récolter de la Sagesse. Certaines pages sont… particulières.</small></div></div>
+    <div class="ir"><svg viewBox="0 0 32 32"><circle cx="16" cy="10" r="4.4" fill="none" stroke="#f5d98a" stroke-width="1.6"/><path d="M7 26c1-6 4-8 9-8s8 2 9 8" fill="none" stroke="#f5d98a" stroke-width="1.6" stroke-linecap="round"/><path d="M26 6l1.4 3 3 1.4-3 1.4L26 15l-1.4-3.2-3-1.4 3-1.4z" fill="#a78bfa"/></svg><div><b>Des serviteurs</b><small>Ce que tu récoltes peut recruter de l'aide, qui travaille à ta place, même un peu quand tu es absent.</small></div></div>
+    <div class="ir"><svg viewBox="0 0 32 32"><circle cx="16" cy="24" r="6.4" fill="#e8c04a" stroke="#6b4a10" stroke-width="1"/><circle cx="16" cy="24" r="2.8" fill="#e11d48"/><rect x="13.6" y="3" width="4.8" height="17" rx="1.6" fill="#e8c04a" stroke="#6b4a10" stroke-width="1"/><rect x="18" y="4" width="6" height="3.6" rx=".8" fill="#e8c04a" stroke="#6b4a10" stroke-width=".8"/><rect x="18" y="10" width="4.4" height="3" rx=".8" fill="#e8c04a" stroke="#6b4a10" stroke-width=".8"/></svg><div><b>Des fragments de clé</b><small>À force de pratique, des fragments se forment. Réunis-les : ils ouvrent des coffres sur la page du Coffre des Arcanes.</small></div></div>
+    <div class="ir"><svg viewBox="0 0 32 32"><path d="M3 12L16 4l13 8z" fill="#c4b5fd" stroke="#6d5bd0" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 14h4v10H6zM14 14h4v10h-4zM22 14h4v10h-4zM3 26h26" fill="rgba(196,181,253,.35)" stroke="#6d5bd0" stroke-width="1.2" stroke-linejoin="round"/></svg><div><b>L'Amphithéâtre</b><small>L'école de magie, en bas de la page : dépense ta Sagesse pour suivre des cours et apprendre des sorts, puis équipe-les dans tes emplacements.</small></div></div>
+  </div>
+  <label class="intro-chk"><input type="checkbox" id="introNo"><span class="cbx"></span><span>Ne plus afficher ce message</span></label>
+  <button class="intro-go" id="introGo">Commencer l'aventure</button>
+  <div class="intro-hint">Tu pourras le relire avec le bouton « ? » en haut de la page.</div>
+</div></div>
+<div id="pick" hidden><div class="pbox">
+  <div class="phead"><b id="ptitle"></b><button id="pclose" aria-label="Fermer">✕</button></div>
+  <div class="slots" id="pslots"></div><div class="blds" id="plist"></div>
+</div></div>
+<!-- curseurs : enfants DIRECTS de <body> (un parent avec backdrop-filter casserait position:fixed) -->
+<div id="orbCur" aria-hidden="true"></div>
+<div id="quillCur" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 2C13 3 7 9 6 17l-3 5 5-2c8-1 14-7 13-18z" fill="#f5d98a" stroke="#d4af37" stroke-width="1"/><path d="M5 19L17 6" stroke="#8a6a1d" stroke-width="1" fill="none"/></svg></div>
+<div id="dk" hidden><div class="pbox">
+  <div class="phead"><b>Decks de sorts</b><button id="dkclose" aria-label="Fermer">✕</button></div>
+  <div class="dkform"><input id="dkname" maxlength="20" placeholder="Nom du deck…"><select id="dkt"><option value="H">Hybride</option><option value="V">Voile</option><option value="G">Grimoire</option></select><button class="dkb" id="dkadd">+ Créer</button></div>
+  <div class="blds" id="dklist"></div>
+</div></div>
+<div id="gate" hidden><div class="pbox">
+  <div class="phead"><b>⚠ Adaptation en plein farm</b></div>
+  <div class="hint" id="gtxt"></div><div class="blds" id="gbtns"></div>
+</div></div>
+<div id="toast"></div>
+</body>
+</html>

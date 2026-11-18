@@ -6,7 +6,13 @@
 <title>Coffre des arcanes</title>
 <!-- LIEN DE L'APPLICATION PWA -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <meta name="theme-color" content="#1a1a2e">
+    <!-- Démarrage rapide : joueur déjà connu sur cet appareil → pas d'écran de connexion au premier affichage (retiré si Firebase dit « non connecté ») -->
+    <script>try{if(JSON.parse(localStorage.getItem('arcane-vault')||'{}').pseudo)document.documentElement.classList.add('fast')}catch(e){}</script>
 
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -15,7 +21,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
       import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+      import { getFirestore, doc, setDoc, getDoc, collection, getDocs, runTransaction, updateDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBkwZIkmAAuYtZpoVokvhZd5MYlTfkLyww",
@@ -28,6 +34,7 @@
       };
 
       const app = initializeApp(firebaseConfig);
+      window.fbApp = app;                                   // pour Firebase Messaging (import dynamique dans script.js)
       window.auth = getAuth(app);
       window.db = getFirestore(app);
       window.GoogleAuthProvider = GoogleAuthProvider;
@@ -39,10 +46,13 @@
       window.getDoc = getDoc;
       window.collection = collection;
       window.getDocs = getDocs;
+      window.runTransaction = runTransaction;
+      window.updateDoc = updateDoc;
     </script>
 
     <!-- Scripts de l'application -->
     <script src="data.js" defer></script>
+    <script src="patchnotes.js" defer></script>
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -87,14 +97,16 @@
 </div>
 
 <div id="app">
-  <header>
-    <div class="logo" id="logo-click">✦ Coffre des arcanes</div>
-    <div class="header-right">
+  <header style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; text-align: center;">
+    <div class="logo" id="logo-click" style="font-size: 20px;">✦ Coffre des arcanes</div>
+    <div class="header-nav-buttons" style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; width: 100%;">
       <button id="leaderboard-btn" class="leaderboard-btn" onclick="openLeaderboardModal()" title="Top Mages">🏆</button>
       <button class="inv-btn" onclick="openSidebar()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         INVENTAIRE
       </button>
+      <button class="inv-btn" onclick="window.location.href='clicker/'" title="Accéder au Grimoire">⚡ GRIMOIRE</button>
+      <button class="inv-btn" onclick="showToast('⚔️ Quêtes de l’Académie : Bientôt disponible !')" title="Quêtes">⚔️ Quête</button>
     </div>
   </header>
 
@@ -158,11 +170,14 @@
 <div id="overlay" onclick="closeSidebar()"></div>
 <div id="sidebar">
   <div class="sidebar-header">
-    <span class="sidebar-title">✦ Inventaire</span>
+    <span class="sidebar-title" id="sidebar-title-text">✦ Inventaire</span>
     <button class="close-btn" onclick="closeSidebar()">✕</button>
   </div>
   <div class="player-badge" id="player-badge"></div>
-  <div class="completion-bar">
+
+  <!-- Vue Inventaire -->
+  <div id="inventory-view" style="display:flex; flex-direction:column; flex:1; overflow-y:auto; overflow-x:hidden;">
+    <div class="completion-bar">
     <div class="completion-label">
       <span id="completion-text">Collection : 0 / 0</span>
       <span id="completion-pct">0%</span>
@@ -175,87 +190,97 @@
   <div class="sidebar-tabs" id="sidebar-tabs"></div>
   <div class="inv-list" id="inv-list"></div>
   <div class="inv-stats" id="inv-stats"></div>
+  </div><!-- fin inventory-view -->
 
-<!-- 🔮 PACTES & GRIMOIRES — Menu accordéon centralisé -->
-<div id="pactes-menu">
-  <button class="pactes-toggle" onclick="togglePactesMenu()">
-    <span>🔮 Pactes &amp; Grimoires</span>
-    <svg id="pactes-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-  </button>
-
-  <div id="pactes-body" class="pactes-body">
-
-    <!-- SOUS-SECTION A : Grimoire de Sauvegarde -->
-    <div class="pacte-item">
-      <button class="pacte-sub-toggle" onclick="togglePacteSection('grimoire')">
-        <span>📖 Grimoire de Sauvegarde</span>
-        <svg class="sub-chevron" id="chev-grimoire" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  <!-- Vue Profil & Grille 3x3 -->
+  <div id="profile-panel" style="display:none; flex-direction:column; flex:1; padding:16px; gap:16px; overflow-y:auto;">
+    <!-- Grille 3x3 du Profil -->
+    <div id="profile-grid-view" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; width:100%;">
+      <!-- Slot 1: Profil -->
+      <button class="profile-slot-btn" onclick="openProfileDetail()">
+        <span class="profile-slot-icon">👤</span>
+        <span class="profile-slot-label">Profil</span>
       </button>
-      <div class="pacte-sub-body" id="body-grimoire">
-        <div class="share-section" style="border-top:none;padding-top:4px">
-          <button class="share-btn" style="background:rgba(168,85,247,0.15);border-color:rgba(168,85,247,0.4);color:#a855f7;margin-bottom:8px;" onclick="openSyncModal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.66-5.66"/></svg>
-            ✨ Fenêtre de Synchronisation &amp; Fusion
-          </button>
-          <button class="share-btn" onclick="exportProfileCode()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
-            Copier mon Code de Profil
-          </button>
-          <button class="share-btn share-btn-load" onclick="toggleLoadInput()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-            Charger ma Sauvegarde
-          </button>
-          <div id="load-input-wrap" style="display:none;margin-top:8px;">
-            <div class="share-warning">⚠ Ceci écrasera ton inventaire, tes fragments et tes clés actuels. Action irréversible.</div>
-            <textarea id="load-code-input" class="inspect-textarea" placeholder="Colle ton code AV1-… ici…" rows="3"></textarea>
-            <button class="share-btn share-btn-danger" style="margin-top:6px;width:100%" onclick="runLoad()">💾 Restaurer ce Profil</button>
-          </div>
-          <button class="share-btn share-btn-inspect" onclick="toggleInspectInput()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="3"/></svg>
-            Inspecter un Aventurier
-          </button>
-          <div id="inspect-input-wrap" style="display:none;margin-top:8px;">
-            <textarea id="inspect-code-input" class="inspect-textarea" placeholder="Colle le code AV1-… d'un ami…" rows="3"></textarea>
-            <button class="share-btn share-btn-inspect" style="margin-top:6px;width:100%" onclick="runInspect()">👁 Lancer l'Inspection</button>
-          </div>
-        </div>
-      </div>
+
+      <!-- Slot 2: Code -->
+      <button class="profile-slot-btn" onclick="openPromoCodeModal()">
+        <span class="profile-slot-icon">🎟️</span>
+        <span class="profile-slot-label">Code</span>
+      </button>
+
+      <!-- Slot 3: Soutenir le projet (même icône et même lien que le footer) -->
+      <button class="profile-slot-btn" onclick="window.open('https://ko-fi.com/moulecake','_blank','noopener,noreferrer')" title="Soutenir le projet">
+        <span class="profile-slot-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #29abe0; display:block;"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg></span>
+        <span class="profile-slot-label">Soutien</span>
+      </button>
+
+      <!-- Slot 4: Options (sons, vibrations) -->
+      <button class="profile-slot-btn" onclick="openOptionsModal()" title="Options">
+        <span class="profile-slot-icon"><svg class="gear-ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:#a78bfa; display:block;"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        <span class="profile-slot-label">Options</span>
+      </button>
+
+      <!-- Slot 5: Patchnote -->
+      <button class="profile-slot-btn" onclick="openPatchnotes(false)" title="Patchnote">
+        <span class="profile-slot-icon"><svg class="scroll-ic" width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="display:block;"><defs><linearGradient id="scg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset="1" stop-color="#d9b25a"/></linearGradient></defs><path d="M9 5h14a3 3 0 0 1 3 3v15a4 4 0 0 1-4 4H12a3 3 0 0 1-3-3z" fill="url(#scg)" stroke="#8a6a1d" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 5a3 3 0 0 0-3 3v1.5A2.5 2.5 0 0 0 8.5 12H9M9 24H8a2 2 0 0 0-2 2 1.5 1.5 0 0 0 1.5 1.5" stroke="#8a6a1d" stroke-width="1.3" stroke-linecap="round"/><path d="M13 11h9M13 15h9M13 19h5" stroke="#8a5a14" stroke-width="1.4" stroke-linecap="round"/><circle cx="22" cy="23" r="4.2" fill="#e11d48" stroke="#fff1b0" stroke-width="1.2"/><path d="M22 20.8l.7 1.5 1.6.2-1.2 1.1.3 1.6-1.4-.8-1.4.8.3-1.6-1.2-1.1 1.6-.2z" fill="#fff1b0"/></svg></span>
+        <span class="profile-slot-label">Patchnote</span>
+      </button>
+
+      <!-- Slot 6: Futur module -->
+      <button class="profile-slot-btn" disabled>
+        <span class="profile-slot-icon"></span>
+        <span class="profile-slot-label"></span>
+      </button>
+
+      <!-- Slot 7: Futur module -->
+      <button class="profile-slot-btn" disabled>
+        <span class="profile-slot-icon"></span>
+        <span class="profile-slot-label"></span>
+      </button>
+
+      <!-- Slot 8: Futur module -->
+      <button class="profile-slot-btn" disabled>
+        <span class="profile-slot-icon"></span>
+        <span class="profile-slot-label"></span>
+      </button>
+
+      <!-- Slot 9: Futur module -->
+      <button class="profile-slot-btn" disabled>
+        <span class="profile-slot-icon"></span>
+        <span class="profile-slot-label"></span>
+      </button>
     </div>
 
-    <!-- SOUS-SECTION B : Pacte d'Échange -->
-    <div class="pacte-item">
-      <button class="pacte-sub-toggle" id="toggle-pacte" onclick="togglePacteSection('pacte')">
-        <span>⚔ Pacte d'Échange</span>
-        <svg class="sub-chevron" id="chev-pacte" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div class="pacte-sub-body" id="body-pacte">
-        <div class="share-section" id="trade-section" style="border-top:none;padding-top:4px">
-          <div class="trade-label">Objet à proposer</div>
-          <select id="trade-give-select" class="trade-select">
-            <option value="">— Sélectionner —</option>
-          </select>
-          <div class="trade-label" style="margin-top:8px">Objet désiré en échange</div>
-          <input id="trade-want-input" class="search-input" type="text" placeholder="Nom exact de l'objet…" autocomplete="off">
-          <button class="share-btn share-btn-trade" style="margin-top:10px" onclick="forgeTradeContract()">
-            ⚔ Forger le Contrat Magique de Troc
-          </button>
-          <div id="trade-contract-wrap" style="display:none;margin-top:8px;">
-            <div class="share-warning" style="color:#fbbf24;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06);">
-              🔒 L'objet est séquestré. Transmets ce code à ton partenaire.
-            </div>
-            <textarea id="trade-contract-out" class="inspect-textarea" rows="3" readonly></textarea>
-            <button class="share-btn" style="margin-top:6px;width:100%" onclick="copyTradeContract()">📋 Copier le Contrat</button>
-            <button class="share-btn share-btn-danger" style="margin-top:6px;width:100%" onclick="cancelActiveTrade()">↩ Annuler le Troc</button>
-          </div>
-          <div class="trade-label" style="margin-top:12px">Traiter une transaction reçue</div>
-          <textarea id="trade-incoming-input" class="inspect-textarea" placeholder="Colle ici le contrat AV-TRD-… reçu…" rows="3"></textarea>
-          <button class="share-btn share-btn-inspect" style="margin-top:6px;width:100%" onclick="processTradeContract()">📜 Traiter une Transaction</button>
-        </div>
+    <!-- Vue Profil Complet (Masquée par défaut) -->
+    <div id="profile-detail-view" style="display:none; flex-direction:column; gap:16px;">
+      <button class="share-btn" style="width:100%; justify-content:center;" onclick="closeProfileDetail()">← Retour au menu</button>
+
+      <div style="background:rgba(168,85,247,0.06); border:1px solid rgba(168,85,247,0.2); border-radius:12px; padding:12px;">
+        <h4 style="color:#a855f7; font-family:'Cinzel',serif; font-size:13px; margin-bottom:6px;">Modifier le Pseudonyme</h4>
+        <p style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Changez votre nom public dans l'Académie (synchro Cloud si connecté).</p>
+        <input id="profile-pseudo-input" class="search-input" type="text" maxlength="25" placeholder="Votre nouveau pseudo…" style="width:100%; margin-bottom:8px;" autocomplete="off">
+        <button class="share-btn" style="width:100%; justify-content:center;" onclick="saveProfilePseudo()">💾 Mettre à jour le Pseudo</button>
+      </div>
+
+      <div style="background:rgba(34,211,238,0.06); border:1px solid rgba(34,211,238,0.2); border-radius:12px; padding:12px;">
+        <h4 style="color:#22d3ee; font-family:'Cinzel',serif; font-size:13px; margin-bottom:6px;">Version de l'Application</h4>
+        <p style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Vérifiez les mises à jour et nettoyez le cache.</p>
+        <button class="share-btn share-btn-inspect" style="width:100%; justify-content:center;" onclick="checkAppUpdate()">🔄 Vérifier les mises à jour</button>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; padding:12px;">
+        <h4 style="color:var(--text); font-family:'Cinzel',serif; font-size:13px; margin-bottom:6px;">Session Google & Cloud</h4>
+        <p style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Déconnectez votre compte de cet appareil.</p>
+        <button class="share-btn" style="width:100%; justify-content:center; background:rgba(244,63,94,0.1); border-color:rgba(244,63,94,0.3); color:#f43f5e;" onclick="confirmLogout()">🚪 Se déconnecter</button>
+      </div>
+
+      <div style="background:rgba(244,63,94,0.05); border:1px solid rgba(244,63,94,0.2); border-radius:12px; padding:12px;">
+        <h4 style="color:#f43f5e; font-family:'Cinzel',serif; font-size:13px; margin-bottom:6px;">Zone Dangereuse</h4>
+        <p style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Effacez définitivement toutes vos données locales et réinitialisez l'application.</p>
+        <button class="share-btn share-btn-danger" style="width:100%; justify-content:center;" onclick="confirmWipeData()">💥 Effacer mes données</button>
       </div>
     </div>
-
-  </div><!-- fin pactes-body -->
-</div><!-- fin pactes-menu -->
+  </div>
 </div>
 
 
@@ -274,7 +299,7 @@
 
 <div id="mj-panel">
   <div class="mj-title">⚙ MODE MAÎTRE DU JEU</div>
-  <button class="mj-btn" onclick="mjResetKeys()">⚿ Recharger les 3 Clés</button>
+  <button class="mj-btn" onclick="mjResetKeys()">🔑 Recharger les 3 Clés</button>
    <button class="mj-btn" onclick="mjRenamePseudo()">✎ Modifier le Pseudo</button>
    <button class="mj-btn" onclick="mjAddItem()">⚙ Ajouter un Objet (Debug)</button>
    <button class="mj-btn mj-btn-close" onclick="closeMJPanel()">✕ Fermer le Mode MJ</button>
@@ -294,6 +319,12 @@
 <!-- FOOTER JURIDIQUE DISCRET -->
 
 <footer class="legal-footer">
+    <div style="margin-bottom: 12px;">
+        <a href="https://ko-fi.com/moulecake" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 12px; transition: all 0.2s; padding: 4px 12px; background: rgba(33, 150, 243, 0.08); border: 1px solid rgba(33, 150, 243, 0.2); border-radius: 20px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #29abe0;"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+            <span>Soutenir le projet</span>
+        </a>
+    </div>
     <p>© 2026 <a href="https://moulecakecorpcie.bolt.host" target="_blank">Moulecake Corporation Company</a>. Tous droits réservés. Une création Coffre des arcanes.</p>
     <div class="legal-links">
         <span onclick="openLegalModal('mentions')">Mentions Légales</span> | 
@@ -328,7 +359,8 @@
     </div>
 </div>
 
-<!-- FENÊTRE DE SYNCHRONISATION & FUSION (MODAL) -->
+<!-- [DÉSACTIVÉ 2026-11-17] Ancienne fenêtre de synchronisation/fusion localStorage⇄Cloud + import AV1 : aucun bouton ne l'ouvre et ses fonctions (closeSyncModal, runLocalStorageCloudMerge, runAV1SyncImport, runCloudOptimization) n'existent plus dans script.js. À supprimer après validation.
+
 <div id="sync-modal" class="legal-modal" style="display:none;">
     <div class="legal-modal-content">
       <span class="legal-modal-close" onclick="closeSyncModal()">✕</span>
@@ -357,6 +389,96 @@
           <button class="share-btn share-btn-inspect" style="width:100%;justify-content:center;" onclick="runCloudOptimization()">✨ Lancer l'Optimisation</button>
         </div>
       </div>
+    </div>
+</div>
+-->
+
+<!-- MODALE OPTIONS -->
+<div id="options-modal" class="legal-modal" style="display:none;" onclick="if(event.target===this)closeOptionsModal()">
+    <div class="legal-modal-content" style="max-width:380px;">
+        <span class="legal-modal-close" onclick="closeOptionsModal()">✕</span>
+        <h3 style="margin-top:0; color:#a78bfa; font-family:'Cinzel',serif;">⚙️ Options</h3>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">Ces réglages sont enregistrés sur cet appareil (Coffre et Grimoire).</p>
+        <div class="opt-row">
+          <div class="opt-txt"><b>Sons</b><small>Clics, ouverture des coffres, jeu du Grimoire</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="opt-sound" onchange="setPref('sound', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="opt-row">
+          <div class="opt-txt"><b>Vibrations</b><small>Retour haptique sur smartphone</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="opt-vibe" onchange="setPref('vibe', this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="opt-row">
+          <div class="opt-txt"><b>Notifications</b><small>Un rappel quand tes clés sont rechargées ou qu'une clé est prête dans le Clicker. <strong style="color:#fbbf24;">Conseillé sur smartphone</strong> pour ne pas rater tes clés (sur iPhone : ajoute d'abord l'app à l'écran d'accueil). Nécessite d'être connecté.</small></div>
+          <label class="toggle-switch"><input type="checkbox" id="opt-push" onchange="togglePush(this)"><span class="toggle-slider"></span></label>
+        </div>
+    </div>
+</div>
+
+<!-- PATCHNOTE (affiché une fois par version, puis via Menu › Patchnote) -->
+<div id="patch-modal" class="legal-modal" style="display:none;" onclick="if(event.target===this)closePatchnotes()">
+    <div class="legal-modal-content patch-box" role="dialog" aria-modal="true" aria-labelledby="patch-t">
+        <span class="legal-modal-close" onclick="closePatchnotes()">✕</span>
+        <div class="patch-head">
+          <svg class="patch-ic" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="pcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset="1" stop-color="#d9b25a"/></linearGradient></defs>
+            <path d="M18 10h30a6 6 0 0 1 6 6v30a8 8 0 0 1-8 8H24a6 6 0 0 1-6-6z" fill="url(#pcg)" stroke="#8a6a1d" stroke-width="2" stroke-linejoin="round"/><path d="M18 10a6 6 0 0 0-6 6v3a5 5 0 0 0 5 5h1M18 50h-2a4 4 0 0 0-4 4 3 3 0 0 0 3 3" fill="none" stroke="#8a6a1d" stroke-width="2" stroke-linecap="round"/>
+            <path d="M26 22h20M26 30h20M26 38h11" stroke="#8a5a14" stroke-width="2.4" stroke-linecap="round"/><circle cx="44" cy="46" r="8.5" fill="#e11d48" stroke="#fff1b0" stroke-width="2"/><path d="M44 40.4l1.5 3.2 3.4.4-2.5 2.3.7 3.4-3.1-1.7-3.1 1.7.7-3.4-2.5-2.3 3.4-.4z" fill="#fff1b0"/></svg>
+          <div><h3 id="patch-t" style="margin:0;color:#f5d98a;font-family:'Cinzel',serif;">Patchnote</h3><p id="patch-sub" style="margin:2px 0 0;font-size:12px;color:var(--text-dim);">Les nouveautés du Coffre des Arcanes</p></div>
+        </div>
+        <div id="patch-list"></div>
+        <button class="push-go" id="patch-ok" onclick="closePatchnotes()">Compris !</button>
+    </div>
+</div>
+
+<div id="update-banner" style="display:none;"><span>✨ Nouvelle version disponible</span><button onclick="location.reload()">Recharger</button></div>
+
+<!-- INVITATION AUX NOTIFICATIONS (une fois, puis rappel après 7 jours) -->
+<div id="push-modal" class="legal-modal" style="display:none;">
+    <div class="legal-modal-content push-box" role="dialog" aria-modal="true" aria-labelledby="push-t">
+        <svg class="push-bell" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="bellg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b0"/><stop offset=".5" stop-color="#e8c04a"/><stop offset="1" stop-color="#8a6a1d"/></linearGradient>
+            <radialGradient id="belld" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#fda4af"/><stop offset=".5" stop-color="#e11d48"/><stop offset="1" stop-color="#7f1030"/></radialGradient>
+          </defs>
+          <g class="bell-sw">
+            <path d="M32 6c-1.7 0-3 1.3-3 3v1.6C21.8 12.4 17 18.7 17 26v9.5L12.6 42c-.9 1.3.1 3 1.7 3h35.4c1.6 0 2.6-1.7 1.7-3L47 35.5V26c0-7.3-4.8-13.6-12-15.4V9c0-1.7-1.3-3-3-3z" fill="url(#bellg)" stroke="#6b4a10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M17 36.5Q32 40 47 36.5" fill="none" stroke="#8a6a1d" stroke-width="1.1"/><path d="M22.5 27c0-5.2 3-9.2 8-10.8" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M26.5 48.5a5.5 5.5 0 0 0 11 0z" fill="url(#bellg)" stroke="#6b4a10" stroke-width="1.2" stroke-linejoin="round"/>
+          </g>
+          <circle cx="47" cy="14" r="8" fill="url(#belld)" stroke="#fff1b0" stroke-width="1.6"/><path d="M47 9.6v5.6M47 18.2v.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <h3 id="push-t" style="margin:6px 0 4px; color:#f5d98a; font-family:'Cinzel',serif; text-align:center;">Ne rate plus tes clés !</h3>
+        <p style="font-size:13px; color:var(--text-dim); text-align:center; line-height:1.5;">Reçois une notification quand tes clés sont rechargées, ou qu'une clé est prête dans le Clicker. <strong style="color:#fbbf24;">Recommandé sur smartphone</strong> : accepte la demande qui s'affichera juste après.</p>
+        <button class="push-go" onclick="pushPromptYes()">🔔 Activer les notifications</button>
+        <button class="push-later" onclick="pushPromptLater()">Plus tard</button>
+        <p style="font-size:10.5px; color:var(--text-dim); text-align:center; margin-top:6px;">Modifiable à tout moment dans Menu › Options. Sur iPhone, ajoute d'abord l'app à l'écran d'accueil.</p>
+    </div>
+</div>
+
+<!-- MODALE CODE PROMO PERSISTANTE -->
+<div id="promo-modal" class="legal-modal" style="display:none;" onclick="event.stopPropagation()">
+    <div class="legal-modal-content" style="max-width:380px;" onclick="event.stopPropagation()">
+        <span class="legal-modal-close" onclick="closePromoCodeModal()">✕</span>
+        <h3 style="margin-top:0; color:#22d3ee; font-family:'Cinzel',serif;">🎟️ Code Promotionnel</h3>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">Entrez votre code secret pour recevoir des clés pour l'Académie.</p>
+        <input id="promo-code-input" class="search-input" type="text" placeholder="Ex: ARCANE-2026…" style="width:100%; margin-bottom:12px; text-align:center; font-family:'Cinzel',serif; text-transform:uppercase;" autocomplete="off">
+        <div id="promo-msg" style="font-size:11px; color:#94a3b8; font-weight:bold; min-height:16px; margin-bottom:12px; text-align:center;"></div>
+        <button class="share-btn" style="width:100%; justify-content:center;" onclick="validatePromoCode()">Valider le Code</button>
+    </div>
+</div>
+
+<!-- MODALE ACTION PROFIL (Déconnexion / Suppression avec fond flouté) -->
+<div id="profile-action-modal" class="legal-modal" style="display:none;">
+    <div class="legal-modal-content" style="max-width:380px;">
+        <span class="legal-modal-close" onclick="closeProfileActionModal()">✕</span>
+        <h3 id="profile-modal-title" style="margin-top:0; color:#f43f5e; font-family:'Cinzel',serif;">Confirmation requise</h3>
+        <div id="profile-modal-body" style="font-size:12px; color:var(--text-dim); margin:16px 0; line-height:1.6;"></div>
+        <div id="profile-modal-input-wrap" style="display:none; margin-bottom:16px;">
+            <input id="profile-modal-confirm-input" class="search-input" type="text" placeholder="Tapez SUPPRIMER ici…" style="width:100%; text-align:center; font-family:'Cinzel',serif;" autocomplete="off">
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="share-btn" style="flex:1; justify-content:center;" onclick="closeProfileActionModal()">Annuler</button>
+            <button id="profile-modal-confirm-btn" class="share-btn share-btn-danger" style="flex:1; justify-content:center;" onclick="">Confirmer</button>
+        </div>
     </div>
 </div>
 
