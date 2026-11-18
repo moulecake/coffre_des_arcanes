@@ -1,0 +1,8 @@
+# Jamais dans le dépôt : clés de compte de service Firebase et sauvegardes de joueurs
+*serviceAccount*.json
+*service-account*.json
+*firebase-adminsdk*.json
+backup-players-*.json
+sauvegarde-joueurs-*.json
+node_modules/
+scripts/node_modules/
