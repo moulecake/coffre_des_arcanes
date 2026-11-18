@@ -1017,9 +1017,9 @@ async function submitCustomPseudo(){
 
 // <!-- FOOTER TEXTES ET LOGIQUE JURIDIQUE -->
 const LEGAL_TEXTS = {
-    mentions: {
+mentions: {
         title: "Mentions Légales",
-        body: "<p>L'application <strong>Le Coffre des Arcanes</strong> (Arcane Vault) est un outil interactif de simulation et de mini-jeux, édité par <strong>Moulecake</strong>.<br><strong>Contact :</strong> killpubs@gmail.com</p><p><strong>Hébergement :</strong> Ce site est hébergé par GitHub, Inc. (88 Colin P Kelly Jr St, San Francisco, CA 94107, USA) via GitHub Pages, et utilise les services d'infrastructure de Google / Firebase pour l'authentification.</p><p><strong>Propriété :</strong> Les contenus de règles, sorts et éléments de JDR s'appuient sur l'univers de référence de la 5e édition et demeurent la propriété de leurs créateurs respectifs.</p>"
+        body: "<p>L'application <strong>Le Coffre des Arcanes</strong> (Arcane Vault) est un outil interactif de simulation et de mini-jeux, édité par <strong>Moulecake</strong>.<br><strong>Contact :</strong> killpubs@gmail.com</p><p><strong>Hébergement :</strong> Ce site est hébergé par GitHub, Inc. (88 Colin P Kelly Jr St, San Francisco, CA 94107, USA) via GitHub Pages, et utilise les services d'infrastructure de Google / Firebase pour l'authentification.</p><p><strong>Propriété et Licences :</strong> Ce travail inclut du contenu extrait du System Reference Document (SRD) par Wizards of the Coast LLC, disponible sur <a href=\"https://www.dndbeyond.com/srd\" target=\"_blank\" rel=\"noopener noreferrer\">dndbeyond.com/srd</a>, et licencié sous Creative Commons Attribution 4.0 International (CC-BY-4.0).<br>Dungeons &amp; Dragons, D&amp;D et leurs logos associés sont des marques déposées de Wizards of the Coast LLC. <strong>Le Coffre des Arcanes</strong> est un produit indépendant, non affilié, endossé ou sponsorisé par Wizards of the Coast.</p>"
     },
     confidentialite: {
         title: "Confidentialité & Cookies",
